@@ -1,4 +1,4 @@
-# dstack-private-tracdker
+# dstack-private-tracker
 
 ## Deployments
 

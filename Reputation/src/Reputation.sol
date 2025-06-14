@@ -28,6 +28,9 @@ contract Reputation {
     // Mapping to store the data for all users in THIS contract instance.
     mapping(string => UserData) public allUsers;
 
+    // The URL of the offchain data storage in ipfs
+    string public offchainDataUrl;
+
     /**
      * @dev The constructor is called by the ReputationFactory.
      * @param _creator The TEE address that will own this new Reputation.
@@ -56,20 +59,21 @@ contract Reputation {
         require(msg.sender == owner, "Only the owner can call this function.");
         _;
     }
+
+    function getUserData(string memory _username) public view returns (UserData memory) {
+        return allUsers[_username];
+    }
     
     /**
-     * @dev Custom getter to perform a single-level lookup for user data.
+     * @dev Performs a single-level migration for user data.
      * It first checks this contract, then falls back to the immediate referrer.
      * If data is found in referrer, it copies it to this contract for future lookups.
      * @param _username The username to look up.
-     * @return _ The UserData struct for the user.
      */
-    function retrieveUserData(string memory _username) public returns (UserData memory) {
-        // Check for existence by looking at a field that should not be empty for a real user.
-        if (allUsers[_username].passwordHash != bytes32(0)) {
-            // If user data exists in this (the newest) contract, return it.
-            return allUsers[_username];
-        } else if (referrerReputation != address(0)) {
+    function migrateUserData(string memory _username) public {
+        require(allUsers[_username].passwordHash == bytes32(0), "User exists");
+        
+        if (referrerReputation != address(0)) {
             // If not found here, check the immediate referrer's data
             try Reputation(referrerReputation).getUserData(_username) returns (UserData memory referrerData) {
                 if (referrerData.passwordHash != bytes32(0)) {
@@ -81,18 +85,12 @@ contract Reputation {
                         downloadSize: referrerData.downloadSize,
                         uploadSize: referrerData.uploadSize
                     });
-                    
-                    // Return the data
-                    return referrerData;
                 }
             } catch {
                 // Handle the case where the external call fails
                 // Fall through to return empty struct
             }
         }
-        
-        // If not found in current contract or immediate referrer, return empty struct
-        return UserData("", "", bytes32(0), 0, 0);
     }
 
     /**
@@ -137,5 +135,21 @@ contract Reputation {
         require(allUsers[_username].passwordHash != bytes32(0), "User does not exist");
         allUsers[_username].downloadSize = _downloadSize;
         allUsers[_username].uploadSize = _uploadSize;
+    }
+
+    /**
+     * @dev Sets the URL of the offchain data storage in ipfs
+     * @param _offchainDataUrl The URL of the offchain data storage in ipfs
+     */
+    function setOffchainDataUrl(string memory _offchainDataUrl) public onlyOwner {
+        offchainDataUrl = _offchainDataUrl;
+    }
+
+    /**
+     * @dev Gets the URL of the offchain data storage in ipfs
+     * @return The URL of the offchain data storage in ipfs
+     */
+    function getOffchainDataUrl() public view returns (string memory) {
+        return offchainDataUrl;
     }
 }

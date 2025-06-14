@@ -36,3 +36,11 @@ async def get_info():
     client = AsyncTappdClient()
     info = await client.info()
     return JSONResponse(content=info.model_dump())
+
+@app.get("/update_db")
+async def update_db():
+    pass
+
+@app.get("/sync_db")
+async def sync_db():
+    pass

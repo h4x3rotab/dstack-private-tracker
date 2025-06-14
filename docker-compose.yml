@@ -43,7 +43,8 @@ services:
       - mailcatcher
 
   tracker:
-    image: torrust/tracker:develop
+    #image: torrust/tracker:develop
+    image: h4x3rotab/torrust-tracker:develop
     container_name: tracker
     tty: true
     environment:
@@ -52,8 +53,8 @@ services:
     networks:
       - server_side
     ports:
-      - 7070:7070/tcp
-      - 7070:7070/udp
+      - 7070:7070
+      - 7071:7071
       - 6969:6969/udp
       - 1212:1212/tcp
     volumes:
@@ -75,6 +76,99 @@ services:
      - tracker_config:/etc/torrust/tracker
 
 
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - server_side
+    ports:
+      - "3100:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: prometheus
+    tty: true
+    restart: unless-stopped
+    networks:
+      - server_side
+    ports:
+      - "9090:9090" # This port should not be exposed to the internet
+    volumes:
+      - prometheus:/etc/prometheus
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "10"
+    depends_on:
+      - tracker
+
+  proxy:
+    image: nginx:mainline-alpine
+    container_name: proxy
+    restart: unless-stopped
+    networks:
+      - server_side
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - webroot:/var/www/html
+      - nginx:/etc/nginx/conf.d
+      - letsencrypt:/etc/letsencrypt
+      - certbot:/var/lib/letsencrypt
+      - certs:/etc/ssl/certs
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "10"
+    depends_on:
+      - index-gui
+      - index
+      - tracker
+      - grafana
+      
+  sqlite:
+    container_name: sqlite
+    command: ["sleep", "10000000"]
+    image: keinos/sqlite3:latest
+    volumes:
+      - tracker_db:/var/lib/torrust/tracker
+      - index_db:/var/lib/torrust/index
+
+  mirror:
+    container_name: mirror
+    networks:
+      - server_side
+    image: wichtf/webserver:latest
+    volumes:
+      - webroot:/var/www/html
+      - nginx:/etc/nginx/conf.d
+      - letsencrypt:/etc/letsencrypt
+      - certbot:/var/lib/letsencrypt
+      - certs:/etc/ssl/certs
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - webroot:/var/www/html
+      - letsencrypt:/etc/letsencrypt
+      - certbot:/var/lib/letsencrypt
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "10"
+    depends_on:
+      - proxy
+
 networks:
   server_side:
 
@@ -87,3 +181,11 @@ volumes:
   index_logs:
   tracker_logs:
   gui_logs:
+  letsencrypt:
+  grafana:
+  prometheus:
+  certbot:
+  webroot:
+  certs:
+  proxy:
+  nginx:

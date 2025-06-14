@@ -6,3 +6,4 @@ out.json
 .vscode
 .claude
 CLAUDE.md
+cache/

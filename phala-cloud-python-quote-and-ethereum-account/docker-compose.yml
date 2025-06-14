@@ -1,0 +1,9 @@
+services:
+  app:
+    image: avivyaish/phala-cloud-python-quote-and-ethereum-account:latest
+    container_name: app
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+      - /var/run/dstack.sock:/var/run/dstack.sock

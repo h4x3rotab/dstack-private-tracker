@@ -10,8 +10,7 @@ import json  # For parsing ABI
 import os
 
 # --- Configuration for Smart Contract Interaction ---
-WEB3_PROVIDER_URL = os.getenv(
-    "WEB3_PROVIDER_URL", "https://ethereum-sepolia-rpc.publicnode.com")
+WEB3_PROVIDER_URL = "https://ethereum-sepolia-rpc.publicnode.com"
 REPUTATION_CONTRACT_ADDRESS = os.getenv(
     "REPUTATION_CONTRACT_ADDRESS", "0xDefaultIfNotFound")
 OWNER_PRIVATE_KEY = os.getenv("OWNER_PRIVATE_KEY", "0xDefaultIfNotFound")
@@ -328,8 +327,9 @@ def add_user_to_contract(username, initial_download_size, initial_upload_size):
 
         signed_txn = w3_instance.eth.account.sign_transaction(
             transaction, private_key=owner_eth_account.key)
+        # Corrected: Access raw transaction bytes via .raw_transaction as per web3.py docs
         tx_hash = w3_instance.eth.send_raw_transaction(
-            signed_txn.rawTransaction)
+            signed_txn.raw_transaction)
         sys.stdout.write(
             f"Sent transaction to add user '{username}': {tx_hash.hex()}\n")
 
@@ -453,8 +453,9 @@ def update_smart_contract_reputation(username, new_download_size, new_upload_siz
 
         signed_txn = w3_instance.eth.account.sign_transaction(
             transaction, private_key=owner_eth_account.key)
+        # Corrected: Access raw transaction bytes via .raw_transaction as per web3.py docs
         tx_hash = w3_instance.eth.send_raw_transaction(
-            signed_txn.rawTransaction)
+            signed_txn.raw_transaction)
         sys.stdout.write(
             f"Sent transaction to update user '{username}': {tx_hash.hex()}\n")
 

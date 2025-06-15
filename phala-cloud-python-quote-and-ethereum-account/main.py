@@ -26,6 +26,24 @@ async def key():
     _, account, key = quote_and_ethereum_account()
     return key
 
+from web3 import Web3
+
+@app.get("/factory")
+async def factory():
+    _, account, key = quote_and_ethereum_account()
+    address = '0xEAb2770C98103ff12ca975a4Ab94f054238358B6'
+    abi = '[{"type":"function","name":"createReputation","inputs":[{"name":"_referrerReputation","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"event","name":"ReputationCreated","inputs":[{"name":"newReputationAddress","type":"address","indexed":false,"internalType":"address"},{"name":"owner","type":"address","indexed":false,"internalType":"address"},{"name":"referrer","type":"address","indexed":false,"internalType":"address"}],"anonymous":false}]'
+    w3 = Web3(Web3.HTTPProvider("https://ethereum-sepolia-rpc.publicnode.com"))
+    factory = w3.eth.contract(address=address, abi=abi)
+    unsent_tx = factory.functions.createReputation('0x0000000000000000000000000000000000000000').build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+    })
+    signed_tx = account.sign_transaction(unsent_tx)
+    w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    return True
+
+
 @app.get("/tdx_quote")
 async def tdx_quote():
     tdx_quote, _, _ = quote_and_ethereum_account()
@@ -36,11 +54,3 @@ async def get_info():
     client = AsyncTappdClient()
     info = await client.info()
     return JSONResponse(content=info.model_dump())
-
-@app.get("/update_db")
-async def update_db():
-    pass
-
-@app.get("/sync_db")
-async def sync_db():
-    pass

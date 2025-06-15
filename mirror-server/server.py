@@ -568,13 +568,13 @@ class RequestLoggerHandler(http.server.SimpleHTTPRequestHandler):
         original_uri = self.headers.get('X-Original-URI')
 
         if original_uri:
-            self.log_message(
-                "--- Original Request Details (from X-Original-URI) ---")
             parsed_original_url = urlparse(original_uri)
             original_path_segments = parsed_original_url.path.split('/')
 
             original_announce_id = None
             if len(original_path_segments) >= 3 and original_path_segments[1] == 'announce':
+                self.log_message(
+                    "--- Original Request Details (from X-Original-URI) ---")
                 original_announce_id = original_path_segments[2]
                 self.log_message("Original Announce ID (X): %s",
                                  original_announce_id)
@@ -584,32 +584,6 @@ class RequestLoggerHandler(http.server.SimpleHTTPRequestHandler):
                     params, auth_key=original_announce_id)
                 self.log_message(
                     "----------------------------------------------")
-            else:
-                self.log_message(
-                    "Original Path: %s (not an /announce/X format)", original_path_segments)
-                self.log_message(
-                    "----------------------------------------------")
-        else:
-            self.log_message(
-                "X-Original-URI header not found. Proceeding with current request path.")
-            parsed_url = urlparse(self.path)
-            path_segments = parsed_url.path.split('/')
-
-            if len(path_segments) >= 3 and path_segments[1] == 'announce':
-                announce_id = path_segments[2]
-                self.log_message(
-                    "--- Announce Request Details (from current path) ---")
-                self.log_message("Announce ID (X): %s", announce_id)
-
-                params = parse_qs(parsed_url.query)
-                # Get auth_key from current path params
-                auth_key = params.get('key', [None])[0]
-                self.process_and_log_announce_params(params, auth_key=auth_key)
-                self.log_message(
-                    "--------------------------------------------------")
-            else:
-                self.log_message(
-                    "No specific announce parameters found in current path %s", self.path)
 
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -685,15 +659,13 @@ class RequestLoggerHandler(http.server.SimpleHTTPRequestHandler):
                         # The user_stats overall should also be updated with the delta, not just setting the torrent value
                         # For simplicity, we are setting it to the max reported value for the current torrent here.
                         # A more robust system might track cumulative stats across all torrents or by using deltas.
-                        self.user_stats[auth_key]['uploaded'] = max(
-                            self.user_stats[auth_key]['uploaded'], uploaded_val)
+                        self.user_stats[auth_key]['uploaded'] += uploaded_val
                         needs_update = True
 
                     if self.torrents[info_hash_val][auth_key]['downloaded'] < downloaded_val:
                         self.torrents[info_hash_val][auth_key]['downloaded'] = downloaded_val
                         # Similar to uploaded, ensuring overall stats reflect highest reported
-                        self.user_stats[auth_key]['downloaded'] = max(
-                            self.user_stats[auth_key]['downloaded'], downloaded_val)
+                        self.user_stats[auth_key]['downloaded'] += self.user_stats[auth_key]['downloaded'], downloaded_val
                         needs_update = True
 
                 if needs_update:
@@ -713,16 +685,6 @@ class RequestLoggerHandler(http.server.SimpleHTTPRequestHandler):
                         # uploadSize for contract
                         self.user_stats[auth_key]['uploaded']
                     )
-                # --- End Smart Contract Call ---
-
-            else:
-                self.log_message(f"-----------------------")
-                self.log_message(
-                    f"Warning: Auth Key '{auth_key}' does not belong to a known user. Skipping smart contract update.")
-                self.log_message("-----------------------")
-        else:
-            self.log_message(
-                "Warning: Auth Key (Passkey) not provided in request. Skipping smart contract update.")
 
     def do_POST(self):
         """Handle POST requests."""
